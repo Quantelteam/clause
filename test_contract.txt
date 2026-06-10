@@ -1,0 +1,13 @@
+﻿This is a test contract agreement.
+
+Section 1: Introduction
+This agreement is entered into between Party A and Party B.
+
+Section 2: Terms
+The parties agree to the following terms and conditions.
+
+Section 2.1: Payment Terms
+Payment shall be made within 30 days of invoice.
+
+Section 3: Termination
+Either party may terminate this agreement with 30 days notice.

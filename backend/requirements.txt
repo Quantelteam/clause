@@ -1,0 +1,9 @@
+fastapi==0.110.0
+uvicorn==0.24.0
+pydantic==2.9.0
+PyMuPDF==1.27.2.3
+pdfplumber==0.11.2
+python-docx==0.8.12
+Pillow==10.0.0
+pytesseract==0.3.10
+langchain-text-splitters==0.3.0

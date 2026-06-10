@@ -1,0 +1,1701 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>DocParse — Document Processing Pipeline</title>
+
+        <style>
+            :root {
+                --bg: #f8fafc;
+                --surface: #ffffff;
+                --surface-alt: #f1f5f9;
+                --border: #e2e8f0;
+                --border-light: #f1f5f9;
+                --text: #1e293b;
+                --text-secondary: #64748b;
+                --text-muted: #94a3b8;
+                --accent: #0d9488;
+                --accent-light: #ccfbf1;
+                --accent-dark: #0f766e;
+                --accent-glow: rgba(13, 148, 136, 0.15);
+                --success: #10b981;
+                --success-light: #d1fae5;
+                --warning: #f59e0b;
+                --warning-light: #fef3c7;
+                --error: #ef4444;
+                --error-light: #fee2e2;
+                --info: #3b82f6;
+                --info-light: #dbeafe;
+                --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+                --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+                --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+                --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.06), 0 4px 6px rgba(0, 0, 0, 0.04);
+                --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.08), 0 10px 10px rgba(0, 0, 0, 0.04);
+                --radius-sm: 8px;
+                --radius: 12px;
+                --radius-lg: 16px;
+                --radius-xl: 20px;
+                --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+                --font-mono: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+                --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            html {
+                font-size: 16px;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+
+            body {
+                font-family: var(--font-sans);
+                background: var(--bg);
+                color: var(--text);
+                line-height: 1.6;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 24px 16px 60px;
+                background-image:
+                    radial-gradient(ellipse at 50% 0%, rgba(13, 148, 136, 0.04) 0%, transparent 60%),
+                    radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.03) 0%, transparent 50%);
+                background-attachment: fixed;
+            }
+
+            /* ── Header ─────────────────────── */
+            .header {
+                width: 100%;
+                max-width: 780px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 8px 0 20px;
+                gap: 16px;
+                flex-wrap: wrap;
+            }
+            .brand {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                text-decoration: none;
+                color: var(--text);
+            }
+            .brand-logo {
+                width: 38px;
+                height: 38px;
+                border-radius: var(--radius-sm);
+                background: linear-gradient(135deg, var(--accent), #14b8a6);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #fff;
+                font-weight: 700;
+                font-size: 18px;
+                letter-spacing: -0.5px;
+                box-shadow: 0 2px 8px var(--accent-glow);
+            }
+            .brand-name {
+                font-weight: 700;
+                font-size: 1.2rem;
+                letter-spacing: -0.3px;
+                color: var(--text);
+            }
+            .brand-badge {
+                font-size: 0.7rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+                background: var(--accent-light);
+                color: var(--accent-dark);
+                padding: 3px 8px;
+                border-radius: 20px;
+            }
+            .api-key-wrap {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-sm);
+                padding: 6px 6px 6px 14px;
+                transition: var(--transition);
+                box-shadow: var(--shadow-sm);
+            }
+            .api-key-wrap:focus-within {
+                border-color: var(--accent);
+                box-shadow: 0 0 0 3px var(--accent-glow);
+            }
+            .api-key-wrap label {
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: var(--text-secondary);
+                white-space: nowrap;
+                letter-spacing: 0.3px;
+                text-transform: uppercase;
+            }
+            .api-key-wrap input {
+                border: none;
+                outline: none;
+                font-family: var(--font-mono);
+                font-size: 0.8rem;
+                color: var(--text);
+                background: transparent;
+                width: 160px;
+                letter-spacing: 0.5px;
+            }
+            .api-key-wrap input::placeholder {
+                color: var(--text-muted);
+            }
+            .api-status {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                flex-shrink: 0;
+                background: var(--text-muted);
+                transition: var(--transition);
+            }
+            .api-status.active {
+                background: var(--success);
+                box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+            }
+
+            /* ── Main Container ────────────── */
+            .main-container {
+                width: 100%;
+                max-width: 780px;
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            /* ── Card ──────────────────────── */
+            .card {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-lg);
+                padding: 28px 32px;
+                box-shadow: var(--shadow);
+                transition: var(--transition);
+            }
+            @media (max-width: 600px) {
+                .card {
+                    padding: 20px 16px;
+                    border-radius: var(--radius);
+                }
+            }
+
+            /* ── Upload Zone ───────────────── */
+            .upload-zone {
+                position: relative;
+                border: 2px dashed var(--border);
+                border-radius: var(--radius-lg);
+                padding: 48px 32px;
+                text-align: center;
+                cursor: pointer;
+                transition: all var(--transition-slow);
+                background: var(--surface-alt);
+                overflow: hidden;
+                user-select: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .upload-zone:hover,
+            .upload-zone.drag-over {
+                border-color: var(--accent);
+                background: #f0fdfa;
+                box-shadow: inset 0 0 0 1px var(--accent-glow), 0 0 30px var(--accent-glow);
+                transform: translateY(-1px);
+            }
+            .upload-zone.drag-over {
+                border-style: solid;
+                background: #ecfdf5;
+                box-shadow: inset 0 0 0 2px rgba(13, 148, 136, 0.3), 0 0 40px var(--accent-glow);
+                transform: translateY(-2px);
+            }
+            .upload-zone.has-file {
+                border-style: solid;
+                border-color: var(--success);
+                background: var(--success-light);
+                box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.2);
+            }
+            .upload-icon {
+                display: block;
+                margin: 0 auto 16px;
+                width: 64px;
+                height: 64px;
+                color: var(--accent);
+                transition: var(--transition-slow);
+            }
+            .upload-zone.drag-over .upload-icon {
+                transform: translateY(-6px);
+                color: var(--accent-dark);
+            }
+            .upload-title {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: var(--text);
+                margin-bottom: 4px;
+                letter-spacing: -0.3px;
+            }
+            .upload-subtitle {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+                margin-bottom: 4px;
+            }
+            .upload-formats {
+                font-size: 0.75rem;
+                color: var(--text-muted);
+                margin-top: 8px;
+                letter-spacing: 0.2px;
+            }
+            .upload-formats span {
+                display: inline-block;
+                background: var(--surface);
+                border: 1px solid var(--border-light);
+                border-radius: 4px;
+                padding: 2px 8px;
+                margin: 2px 3px;
+                font-family: var(--font-mono);
+                font-size: 0.7rem;
+                letter-spacing: 0.3px;
+            }
+            .file-input-hidden {
+                display: none;
+            }
+
+            /* ── File Card ─────────────────── */
+            .file-card {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                padding: 14px 18px;
+                animation: slideUp 0.35s ease-out;
+                box-shadow: var(--shadow-sm);
+                transition: var(--transition);
+            }
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(16px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .file-icon {
+                width: 44px;
+                height: 44px;
+                border-radius: var(--radius-sm);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
+                font-size: 0.75rem;
+                flex-shrink: 0;
+                letter-spacing: 0.5px;
+            }
+            .file-icon.pdf {
+                background: #fee2e2;
+                color: #dc2626;
+            }
+            .file-icon.docx {
+                background: #dbeafe;
+                color: #2563eb;
+            }
+            .file-icon.html {
+                background: #fef3c7;
+                color: #d97706;
+            }
+            .file-icon.img {
+                background: #f3e8ff;
+                color: #7c3aed;
+            }
+            .file-icon.unknown {
+                background: #f1f5f9;
+                color: #64748b;
+            }
+            .file-info {
+                flex: 1;
+                min-width: 0;
+            }
+            .file-name {
+                font-weight: 600;
+                font-size: 0.9rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                letter-spacing: -0.2px;
+            }
+            .file-meta {
+                font-size: 0.75rem;
+                color: var(--text-secondary);
+            }
+            .file-actions {
+                display: flex;
+                gap: 6px;
+                flex-shrink: 0;
+            }
+
+            /* ── Buttons ───────────────────── */
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                font-family: var(--font-sans);
+                font-size: 0.85rem;
+                font-weight: 600;
+                padding: 10px 18px;
+                border-radius: var(--radius-sm);
+                border: 1px solid transparent;
+                cursor: pointer;
+                transition: all var(--transition);
+                letter-spacing: -0.2px;
+                white-space: nowrap;
+                text-decoration: none;
+                position: relative;
+                overflow: hidden;
+            }
+            .btn:active {
+                transform: scale(0.97);
+            }
+            .btn-primary {
+                background: var(--accent);
+                color: #fff;
+                border-color: var(--accent);
+                box-shadow: 0 2px 8px var(--accent-glow);
+            }
+            .btn-primary:hover {
+                background: var(--accent-dark);
+                border-color: var(--accent-dark);
+                box-shadow: 0 4px 14px var(--accent-glow);
+                transform: translateY(-1px);
+            }
+            .btn-primary:disabled {
+                background: #94a3b8;
+                border-color: #94a3b8;
+                box-shadow: none;
+                cursor: not-allowed;
+                transform: none;
+            }
+            .btn-outline {
+                background: var(--surface);
+                color: var(--text);
+                border-color: var(--border);
+            }
+            .btn-outline:hover {
+                background: var(--surface-alt);
+                border-color: #cbd5e1;
+            }
+            .btn-ghost {
+                background: transparent;
+                color: var(--text-secondary);
+                border-color: transparent;
+                padding: 6px 10px;
+            }
+            .btn-ghost:hover {
+                background: var(--surface-alt);
+                color: var(--text);
+            }
+            .btn-danger-ghost {
+                background: transparent;
+                color: var(--error);
+                border-color: transparent;
+                padding: 6px 10px;
+            }
+            .btn-danger-ghost:hover {
+                background: var(--error-light);
+            }
+            .btn-sm {
+                font-size: 0.75rem;
+                padding: 6px 12px;
+                border-radius: 6px;
+            }
+            .btn-icon {
+                width: 34px;
+                height: 34px;
+                padding: 0;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 50%;
+            }
+
+            /* ── Pipeline Visualization ────── */
+            .pipeline {
+                display: flex;
+                align-items: center;
+                gap: 0;
+                padding: 8px 0;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .pipeline-step {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.78rem;
+                font-weight: 500;
+                color: var(--text-muted);
+                padding: 8px 12px;
+                border-radius: 20px;
+                transition: all var(--transition);
+                white-space: nowrap;
+                letter-spacing: -0.1px;
+            }
+            .pipeline-step .step-dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: var(--border);
+                flex-shrink: 0;
+                transition: all var(--transition-slow);
+            }
+            .pipeline-step.active {
+                color: var(--accent-dark);
+                font-weight: 600;
+                background: var(--accent-light);
+            }
+            .pipeline-step.active .step-dot {
+                background: var(--accent);
+                box-shadow: 0 0 8px var(--accent-glow);
+                animation: pulse-dot 1.2s ease-in-out infinite;
+            }
+            .pipeline-step.done {
+                color: var(--success);
+            }
+            .pipeline-step.done .step-dot {
+                background: var(--success);
+                box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+            }
+            .pipeline-step.error-step {
+                color: var(--error);
+            }
+            .pipeline-step.error-step .step-dot {
+                background: var(--error);
+                box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+            }
+            .pipeline-connector {
+                width: 20px;
+                height: 2px;
+                background: var(--border);
+                border-radius: 1px;
+                flex-shrink: 0;
+                transition: var(--transition-slow);
+            }
+            .pipeline-connector.done {
+                background: var(--success);
+            }
+            @keyframes pulse-dot {
+                0%,
+                100% {
+                    box-shadow: 0 0 4px var(--accent-glow);
+                }
+                50% {
+                    box-shadow: 0 0 14px var(--accent-glow), 0 0 24px rgba(13, 148, 136, 0.25);
+                }
+            }
+            @media (max-width: 700px) {
+                .pipeline {
+                    gap: 2px;
+                }
+                .pipeline-step {
+                    font-size: 0.7rem;
+                    padding: 6px 7px;
+                    gap: 4px;
+                }
+                .pipeline-connector {
+                    width: 10px;
+                }
+            }
+            @media (max-width: 500px) {
+                .pipeline-step {
+                    font-size: 0.65rem;
+                    padding: 5px 5px;
+                    gap: 3px;
+                }
+                .pipeline-step .step-dot {
+                    width: 7px;
+                    height: 7px;
+                }
+                .pipeline-connector {
+                    width: 6px;
+                    height: 1px;
+                }
+            }
+
+            /* ── Results ───────────────────── */
+            .results-container {
+                animation: slideUp 0.4s ease-out;
+            }
+            .results-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+            .results-title {
+                font-weight: 700;
+                font-size: 1.05rem;
+                letter-spacing: -0.3px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .results-badge {
+                font-size: 0.7rem;
+                font-weight: 600;
+                background: var(--success-light);
+                color: #065f46;
+                padding: 3px 10px;
+                border-radius: 20px;
+                letter-spacing: 0.3px;
+            }
+            .tab-bar {
+                display: flex;
+                gap: 2px;
+                background: var(--surface-alt);
+                border-radius: var(--radius-sm);
+                padding: 3px;
+            }
+            .tab-btn {
+                font-family: var(--font-sans);
+                font-size: 0.78rem;
+                font-weight: 500;
+                padding: 7px 14px;
+                border: none;
+                background: transparent;
+                color: var(--text-secondary);
+                cursor: pointer;
+                border-radius: 6px;
+                transition: var(--transition);
+                letter-spacing: -0.1px;
+                white-space: nowrap;
+            }
+            .tab-btn.active {
+                background: var(--surface);
+                color: var(--text);
+                font-weight: 600;
+                box-shadow: var(--shadow-sm);
+            }
+            .tab-content {
+                display: none;
+                animation: fadeIn 0.25s ease-out;
+            }
+            .tab-content.active {
+                display: block;
+            }
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(6px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .markdown-preview {
+                background: #1e293b;
+                color: #e2e8f0;
+                border-radius: var(--radius);
+                padding: 20px 24px;
+                font-family: var(--font-mono);
+                font-size: 0.82rem;
+                line-height: 1.7;
+                overflow-x: auto;
+                max-height: 500px;
+                overflow-y: auto;
+                white-space: pre-wrap;
+                word-break: break-word;
+                letter-spacing: 0.1px;
+            }
+            .markdown-preview .md-h1 {
+                color: #fbbf24;
+                font-weight: 700;
+                font-size: 1.1rem;
+            }
+            .markdown-preview .md-h2 {
+                color: #f59e0b;
+                font-weight: 600;
+            }
+            .markdown-preview .md-table {
+                color: #93c5fd;
+            }
+            .markdown-preview .md-clause {
+                color: #a5b4fc;
+            }
+            .json-preview {
+                background: #1e293b;
+                color: #e2e8f0;
+                border-radius: var(--radius);
+                padding: 20px 24px;
+                font-family: var(--font-mono);
+                font-size: 0.78rem;
+                line-height: 1.6;
+                overflow-x: auto;
+                max-height: 500px;
+                overflow-y: auto;
+                white-space: pre-wrap;
+                word-break: break-word;
+            }
+            .chunk-list {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                max-height: 500px;
+                overflow-y: auto;
+            }
+            .chunk-item {
+                background: var(--surface-alt);
+                border: 1px solid var(--border-light);
+                border-radius: var(--radius-sm);
+                padding: 14px 16px;
+                font-size: 0.82rem;
+                transition: var(--transition);
+                cursor: pointer;
+            }
+            .chunk-item:hover {
+                border-color: #cbd5e1;
+                box-shadow: var(--shadow-sm);
+            }
+            .chunk-item .chunk-id {
+                font-weight: 700;
+                font-size: 0.7rem;
+                color: var(--accent);
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+                margin-bottom: 4px;
+            }
+            .chunk-item .chunk-meta {
+                font-size: 0.68rem;
+                color: var(--text-muted);
+                margin-bottom: 6px;
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+            .chunk-item .chunk-text {
+                font-size: 0.8rem;
+                color: var(--text);
+                line-height: 1.5;
+                display: -webkit-box;
+                -webkit-line-clamp: 4;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+            .chunk-item.expanded .chunk-text {
+                -webkit-line-clamp: unset;
+                display: block;
+            }
+
+            /* ── Toast ─────────────────────── */
+            .toast-container {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 1000;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                pointer-events: none;
+            }
+            .toast {
+                pointer-events: auto;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-sm);
+                padding: 12px 16px;
+                font-size: 0.82rem;
+                font-weight: 500;
+                box-shadow: var(--shadow-lg);
+                animation: toastIn 0.35s ease-out, toastOut 0.3s ease-in forwards;
+                animation-delay: 0s, 3.5s;
+                max-width: 380px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .toast.success {
+                border-left: 3px solid var(--success);
+            }
+            .toast.error {
+                border-left: 3px solid var(--error);
+            }
+            .toast.info {
+                border-left: 3px solid var(--info);
+            }
+            @keyframes toastIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(40px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+            @keyframes toastOut {
+                from {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateX(40px);
+                }
+            }
+
+            /* ── Progress Bar ─────────────── */
+            .progress-bar-wrap {
+                background: var(--surface-alt);
+                border-radius: 20px;
+                height: 6px;
+                overflow: hidden;
+                margin: 8px 0;
+            }
+            .progress-bar-fill {
+                height: 100%;
+                background: linear-gradient(90deg, var(--accent), #14b8a6);
+                border-radius: 20px;
+                transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                width: 0%;
+            }
+
+            /* ── Empty State ──────────────── */
+            .empty-state {
+                text-align: center;
+                padding: 32px 16px;
+                color: var(--text-muted);
+            }
+            .empty-state svg {
+                width: 48px;
+                height: 48px;
+                margin-bottom: 12px;
+                opacity: 0.5;
+            }
+
+            /* ── Spinner ──────────────────── */
+            .spinner {
+                display: inline-block;
+                width: 16px;
+                height: 16px;
+                border: 2px solid var(--border);
+                border-top-color: var(--accent);
+                border-radius: 50%;
+                animation: spin 0.7s linear infinite;
+            }
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            /* ── Scrollbar ────────────────── */
+            ::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+            }
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 3px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+            }
+
+            /* ── Responsive ───────────────── */
+            @media (max-width: 600px) {
+                .header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 10px;
+                }
+                .api-key-wrap {
+                    width: 100%;
+                }
+                .api-key-wrap input {
+                    width: 100%;
+                    flex: 1;
+                }
+                .upload-zone {
+                    padding: 32px 16px;
+                }
+                .upload-title {
+                    font-size: 1.05rem;
+                }
+                .upload-icon {
+                    width: 48px;
+                    height: 48px;
+                }
+                .btn {
+                    font-size: 0.8rem;
+                    padding: 8px 14px;
+                }
+                .markdown-preview,
+                .json-preview {
+                    font-size: 0.7rem;
+                    padding: 14px 12px;
+                    max-height: 350px;
+                }
+                .tab-btn {
+                    font-size: 0.7rem;
+                    padding: 6px 10px;
+                }
+                .results-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+                .toast-container {
+                    right: 8px;
+                    left: 8px;
+                    top: 8px;
+                }
+                .toast {
+                    max-width: 100%;
+                    font-size: 0.75rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+
+        <!-- ═══════════════ HEADER ═══════════════ -->
+        <header class="header">
+            <a class="brand" href="/" title="DocParse">
+                <div class="brand-logo">DP</div>
+                <span class="brand-name">DocParse</span>
+                <span class="brand-badge">MVP</span>
+            </a>
+            <div class="api-key-wrap">
+                <label for="api-key">API Key</label>
+                <input
+                type="password"
+                id="api-key"
+                placeholder="sk-••••••••••••••••"
+                autocomplete="off"
+                spellcheck="false"
+                >
+                <span class="api-status" id="api-status" title="API status"></span>
+            </div>
+        </header>
+
+        <!-- ═══════════════ MAIN ═══════════════ -->
+        <main class="main-container">
+
+            <!-- Upload Card -->
+            <div class="card" id="upload-card">
+                <div
+                class="upload-zone"
+                id="upload-zone"
+                role="button"
+                tabindex="0"
+                aria-label="Upload document"
+                >
+                <!-- Inline SVG upload icon -->
+                <svg class="upload-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="12" y="18" width="40" height="36" rx="4" stroke="currentColor" stroke-width="2.5" fill="none"/>
+                    <path d="M24 18V8a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                    <path d="M32 28v14M26 36l6-6 6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <p class="upload-title">Drop your document here</p>
+                <p class="upload-subtitle">or click to browse files</p>
+                <p class="upload-formats">
+                    <span>.pdf</span><span>.docx</span><span>.html</span><span>.png</span><span>.jpg</span>
+                </p>
+                <input type="file" class="file-input-hidden" id="file-input" accept=".pdf,.docx,.html,.htm,.png,.jpg,.jpeg,.tiff,.tif">
+            </div>
+        </div>
+
+        <!-- File Queue Card (hidden initially) -->
+        <div class="card" id="queue-card" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <h3 style="font-weight:700;font-size:0.95rem;letter-spacing:-0.2px;">Queued File</h3>
+                <button class="btn btn-ghost btn-sm" id="clear-queue-btn" title="Clear">Clear</button>
+            </div>
+            <div id="file-queue" style="margin-top:10px;"></div>
+            <button class="btn btn-primary" id="process-btn" style="margin-top:14px;width:100%;justify-content:center;">
+                Process Document
+            </button>
+        </div>
+
+        <!-- Pipeline & Progress Card (hidden initially) -->
+        <div class="card" id="pipeline-card" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                <h3 style="font-weight:700;font-size:0.9rem;letter-spacing:-0.2px;">Processing Pipeline</h3>
+                <span id="pipeline-status-text" style="font-size:0.75rem;color:var(--text-secondary);">Starting...</span>
+            </div>
+            <div class="pipeline" id="pipeline-steps">
+                <span class="pipeline-step" data-step="0"><span class="step-dot"></span>Detect</span>
+                <span class="pipeline-connector"></span>
+                <span class="pipeline-step" data-step="1"><span class="step-dot"></span>Extract</span>
+                <span class="pipeline-connector"></span>
+                <span class="pipeline-step" data-step="2"><span class="step-dot"></span>Clean</span>
+                <span class="pipeline-connector"></span>
+                <span class="pipeline-step" data-step="3"><span class="step-dot"></span>Structure</span>
+                <span class="pipeline-connector"></span>
+                <span class="pipeline-step" data-step="4"><span class="step-dot"></span>Chunk</span>
+                <span class="pipeline-connector"></span>
+                <span class="pipeline-step" data-step="5"><span class="step-dot"></span>Output</span>
+            </div>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" id="progress-bar-fill"></div>
+            </div>
+            <p id="pipeline-detail" style="font-size:0.75rem;color:var(--text-muted);margin-top:6px;text-align:center;"></p>
+        </div>
+
+        <!-- Results Card (hidden initially) -->
+        <div class="card results-container" id="results-card" style="display:none;">
+            <div class="results-header">
+                <span class="results-title">
+                    Processing Complete
+                    <span class="results-badge" id="results-badge">6 chunks</span>
+                </span>
+                <div>
+                    <button class="btn btn-outline btn-sm" id="download-md-btn" title="Download Markdown">.md</button>
+                    <button class="btn btn-outline btn-sm" id="download-json-btn" title="Download JSON chunks">.json</button>
+                    <button class="btn btn-ghost btn-sm" id="reprocess-btn" title="Process another file">New</button>
+                </div>
+            </div>
+            <div class="tab-bar" id="tab-bar">
+                <button class="tab-btn active" data-tab="markdown">📝 Markdown Preview</button>
+                <button class="tab-btn" data-tab="chunks">🧩 Chunks View</button>
+                <button class="tab-btn" data-tab="json">{ } Raw JSON</button>
+            </div>
+            <div style="margin-top:14px;">
+                <div class="tab-content active" id="tab-markdown">
+                    <div class="markdown-preview" id="markdown-content"></div>
+                </div>
+                <div class="tab-content" id="tab-chunks">
+                    <div class="chunk-list" id="chunks-content"></div>
+                </div>
+                <div class="tab-content" id="tab-json">
+                    <div class="json-preview" id="json-content"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        (function() {
+            // ─────────────────────────────────────
+            // CONFIGURATION
+            // ─────────────────────────────────────
+            const USE_MOCK = false; // Toggle: true = simulate backend, false = real API calls
+            const API_BASE = '/api/v1';
+            const POLL_INTERVAL_MS = 800;
+            const MOCK_PROCESSING_TIME_MS = 4500; // total simulated processing time
+
+            // ─────────────────────────────────────
+            // DOM REFERENCES
+            // ─────────────────────────────────────
+            const $ = (sel) => document.querySelector(sel);
+            const $$ = (sel) => document.querySelectorAll(sel);
+
+            const uploadZone = $('#upload-zone');
+            const fileInput = $('#file-input');
+            const queueCard = $('#queue-card');
+            const fileQueue = $('#file-queue');
+            const processBtn = $('#process-btn');
+            const clearQueueBtn = $('#clear-queue-btn');
+            const pipelineCard = $('#pipeline-card');
+            const pipelineSteps = $$('#pipeline-steps .pipeline-step');
+            const pipelineConnectors = $$('#pipeline-steps .pipeline-connector');
+            const pipelineStatusText = $('#pipeline-status-text');
+            const pipelineDetail = $('#pipeline-detail');
+            const progressBarFill = $('#progress-bar-fill');
+            const resultsCard = $('#results-card');
+            const resultsBadge = $('#results-badge');
+            const markdownContent = $('#markdown-content');
+            const chunksContent = $('#chunks-content');
+            const jsonContent = $('#json-content');
+            const tabBar = $('#tab-bar');
+            const toastContainer = $('#toast-container');
+            const apiKeyInput = $('#api-key');
+            const apiStatus = $('#api-status');
+            const downloadMdBtn = $('#download-md-btn');
+            const downloadJsonBtn = $('#download-json-btn');
+            const reprocessBtn = $('#reprocess-btn');
+
+            // ─────────────────────────────────────
+            // STATE
+            // ─────────────────────────────────────
+            let currentFile = null; // { name, size, type, extension, fileObject }
+            let jobId = null;
+            let pollTimer = null;
+            let processingResults = null; // stored results for download
+            const STEP_LABELS = [
+                'Detecting file type...',
+                'Extracting raw text & metadata...',
+                'Removing noise (headers, footers, page numbers)...',
+                'Reconstructing structure (headings, clauses, tables)...',
+                'Chunking with RecursiveCharacterTextSplitter (512 tokens)...',
+                'Serializing output (Markdown + JSON)...'
+            ];
+
+            // ─────────────────────────────────────
+            // UTILITY FUNCTIONS
+            // ─────────────────────────────────────
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            }
+
+            function getFileExtension(filename) {
+                const parts = filename.split('.');
+                return parts.length > 1 ? parts.pop().toLowerCase() : '';
+            }
+
+            function getFileTypeCategory(ext) {
+                const map = {
+                    pdf: 'pdf',
+                    docx: 'docx',
+                    doc: 'docx',
+                    html: 'html',
+                    htm: 'html',
+                    png: 'img',
+                    jpg: 'img',
+                    jpeg: 'img',
+                    tiff: 'img',
+                    tif: 'img',
+                };
+                return map[ext] || 'unknown';
+            }
+
+            function getFileIconClass(ext) {
+                return getFileTypeCategory(ext);
+            }
+
+            function getFileTypeLabel(ext) {
+                const map = {
+                    pdf: 'PDF Document',
+                    docx: 'Word Document',
+                    doc: 'Word Document',
+                    html: 'Web Page',
+                    htm: 'Web Page',
+                    png: 'Image (needs OCR)',
+                    jpg: 'Image (needs OCR)',
+                    jpeg: 'Image (needs OCR)',
+                    tiff: 'Image (needs OCR)',
+                    tif: 'Image (needs OCR)',
+                };
+                return map[ext] || 'Unknown Type';
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            // ─────────────────────────────────────
+            // TOAST NOTIFICATIONS
+            // ─────────────────────────────────────
+            function showToast(message, type = 'info') {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+                toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span> ${escapeHtml(message)}`;
+                toastContainer.appendChild(toast);
+                // Auto-remove after animation
+                setTimeout(() => {
+                    if (toast.parentNode) toast.remove();
+                }, 4000);
+            }
+
+            // ─────────────────────────────────────
+            // API KEY STATUS
+            // ─────────────────────────────────────
+            function updateApiKeyStatus() {
+                const val = apiKeyInput.value.trim();
+                if (val.length > 8) {
+                    apiStatus.classList.add('active');
+                    apiStatus.title = 'API key set';
+                } else {
+                    apiStatus.classList.remove('active');
+                    apiStatus.title = 'No API key';
+                }
+            }
+            apiKeyInput.addEventListener('input', updateApiKeyStatus);
+            updateApiKeyStatus();
+
+            // ─────────────────────────────────────
+            // FILE HANDLING
+            // ─────────────────────────────────────
+            function handleFile(file) {
+                const ext = getFileExtension(file.name);
+                const category = getFileTypeCategory(ext);
+                const typeLabel = getFileTypeLabel(ext);
+
+                currentFile = {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type || 'application/octet-stream',
+                    extension: ext,
+                    category: category,
+                    typeLabel: typeLabel,
+                    fileObject: file,
+                };
+
+                renderFileCard();
+                queueCard.style.display = 'block';
+                uploadZone.classList.add('has-file');
+                uploadZone.querySelector('.upload-title').textContent = '📎 File Ready';
+                uploadZone.querySelector('.upload-subtitle').textContent =
+                    'Click to replace, or process below';
+
+                // Reset downstream UI
+                resetPipeline();
+                resetResults();
+                jobId = null;
+                processingResults = null;
+            }
+
+            function renderFileCard() {
+                if (!currentFile) {
+                    fileQueue.innerHTML = '';
+                    return;
+                }
+                const f = currentFile;
+                const iconClass = getFileIconClass(f.extension);
+                fileQueue.innerHTML = `
+                <div class="file-card">
+                <div class="file-icon ${iconClass}">${f.extension.toUpperCase()}</div>
+                <div class="file-info">
+                <div class="file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+                <div class="file-meta">${formatBytes(f.size)} • ${escapeHtml(f.typeLabel)}</div>
+                </div>
+                <div class="file-actions">
+                <button class="btn btn-ghost btn-sm" id="replace-file-btn" title="Replace file">🔄</button>
+                <button class="btn btn-danger-ghost btn-sm" id="remove-file-btn" title="Remove file">✕</button>
+                </div>
+                </div>
+                `;
+
+                // Attach listeners to the newly created buttons
+                const replaceBtn = fileQueue.querySelector('#replace-file-btn');
+                const removeBtn = fileQueue.querySelector('#remove-file-btn');
+                if (replaceBtn) replaceBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    fileInput.click();
+                });
+                if (removeBtn) removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    clearFile();
+                });
+            }
+
+            function clearFile() {
+                currentFile = null;
+                jobId = null;
+                processingResults = null;
+                fileQueue.innerHTML = '';
+                queueCard.style.display = 'none';
+                uploadZone.classList.remove('has-file');
+                uploadZone.querySelector('.upload-title').textContent = 'Drop your document here';
+                uploadZone.querySelector('.upload-subtitle').textContent = 'or click to browse files';
+                resetPipeline();
+                resetResults();
+                if (pollTimer) clearTimeout(pollTimer);
+                pollTimer = null;
+            }
+
+            function resetPipeline() {
+                pipelineCard.style.display = 'none';
+                pipelineSteps.forEach(s => {
+                    s.classList.remove('active', 'done', 'error-step');
+                });
+                pipelineConnectors.forEach(c => c.classList.remove('done'));
+                progressBarFill.style.width = '0%';
+                pipelineStatusText.textContent = 'Starting...';
+                pipelineDetail.textContent = '';
+            }
+
+            function resetResults() {
+                resultsCard.style.display = 'none';
+                markdownContent.textContent = '';
+                chunksContent.innerHTML = '';
+                jsonContent.textContent = '';
+                resultsBadge.textContent = '';
+                // Reset tabs
+                $$('#tab-bar .tab-btn').forEach(b => b.classList.remove('active'));
+                const firstTab = $('#tab-bar .tab-btn[data-tab="markdown"]');
+                if (firstTab) firstTab.classList.add('active');
+                $$('#results-card .tab-content').forEach(c => c.classList.remove('active'));
+                const firstContent = $('#tab-markdown');
+                if (firstContent) firstContent.classList.add('active');
+            }
+
+            // ─────────────────────────────────────
+            // DRAG & DROP
+            // ─────────────────────────────────────
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadZone.classList.add('drag-over');
+            });
+            uploadZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadZone.classList.remove('drag-over');
+            });
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadZone.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0]);
+                    showToast(`File loaded: ${files[0].name}`, 'success');
+                }
+            });
+            uploadZone.addEventListener('click', () => {
+                fileInput.click();
+            });
+            uploadZone.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    fileInput.click();
+                }
+            });
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    handleFile(fileInput.files[0]);
+                    showToast(`File loaded: ${fileInput.files[0].name}`, 'success');
+                }
+                // Reset so re-selecting the same file triggers change
+                fileInput.value = '';
+            });
+            clearQueueBtn.addEventListener('click', clearFile);
+
+            // ─────────────────────────────────────
+            // PROCESS BUTTON
+            // ─────────────────────────────────────
+            processBtn.addEventListener('click', () => {
+                if (!currentFile) {
+                    showToast('Please select a file first.', 'error');
+                    return;
+                }
+                startProcessing();
+            });
+
+            // ─────────────────────────────────────
+            // PROCESSING LOGIC
+            // ─────────────────────────────────────
+            async function startProcessing() {
+                resetPipeline();
+                resetResults();
+                pipelineCard.style.display = 'block';
+                resultsCard.style.display = 'none';
+                processBtn.disabled = true;
+                processBtn.textContent = '⏳ Processing...';
+                pipelineStatusText.textContent = 'Initializing...';
+                pipelineDetail.textContent = '';
+
+                if (USE_MOCK) {
+                    // ── MOCK PATH ─────────────────
+                    jobId = 'mock-job-' + Date.now();
+                    showToast('Job submitted (mock mode). Processing...', 'info');
+                    await simulateMockPipeline();
+                    processBtn.disabled = false;
+                    processBtn.textContent = '⚡ Process Document';
+                    showToast('Processing complete!', 'success');
+                } else {
+                    // ── REAL API PATH ────────────
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', currentFile.fileObject);
+                        const apiKey = apiKeyInput.value.trim();
+                        const headers = {};
+                        if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+                        const uploadRes = await fetch(`${API_BASE}/documents/upload`, {
+                            method: 'POST',
+                            headers,
+                            body: formData,
+                        });
+                        if (!uploadRes.ok) {
+                            const errBody = await uploadRes.text();
+                            throw new Error(`Upload failed: ${uploadRes.status} ${errBody}`);
+                        }
+                        const uploadData = await uploadRes.json();
+                        jobId = uploadData.job_id;
+                        showToast(`Job submitted: ${jobId}`, 'info');
+                        await pollRealJob(jobId);
+                        processBtn.disabled = false;
+                        processBtn.textContent = '⚡ Process Document';
+                        showToast('Processing complete!', 'success');
+                    } catch (err) {
+                        handleProcessingError(err.message);
+                        processBtn.disabled = false;
+                        processBtn.textContent = '⚡ Process Document';
+                    }
+                }
+            }
+
+            // ── Mock Pipeline Simulation ─────
+            async function simulateMockPipeline() {
+                const totalSteps = STEP_LABELS.length;
+                const stepDuration = MOCK_PROCESSING_TIME_MS / totalSteps;
+
+                for (let i = 0; i < totalSteps; i++) {
+                    // Update pipeline UI
+                    updatePipelineStep(i);
+                    pipelineStatusText.textContent = `Step ${i + 1} of ${totalSteps}`;
+                    pipelineDetail.textContent = STEP_LABELS[i];
+                    const progress = ((i + 1) / totalSteps) * 100;
+                    progressBarFill.style.width = progress + '%';
+
+                    // Simulate processing time with slight randomness
+                    const jitter = stepDuration * (0.6 + Math.random() * 0.8);
+                    await sleep(jitter);
+                }
+
+                // Mark all done
+                pipelineSteps.forEach(s => {
+                    s.classList.remove('active');
+                    s.classList.add('done');
+                });
+                pipelineConnectors.forEach(c => c.classList.add('done'));
+                pipelineStatusText.textContent = '✅ Complete';
+                pipelineDetail.textContent = 'Document processed successfully.';
+                progressBarFill.style.width = '100%';
+
+                // Generate mock results
+                processingResults = generateMockResults(currentFile);
+                renderResults(processingResults);
+                resultsCard.style.display = 'block';
+                resultsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            function updatePipelineStep(activeIndex) {
+                pipelineSteps.forEach((step, i) => {
+                    step.classList.remove('active', 'done', 'error-step');
+                    if (i < activeIndex) step.classList.add('done');
+                    if (i === activeIndex) step.classList.add('active');
+                });
+                pipelineConnectors.forEach((conn, i) => {
+                    conn.classList.remove('done');
+                    if (i < activeIndex) conn.classList.add('done');
+                });
+            }
+
+            // ── Real API Polling ─────────────
+            async function pollRealJob(jobId) {
+                const apiKey = apiKeyInput.value.trim();
+                const headers = {};
+                if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+                const maxPolls = 120;
+                let pollCount = 0;
+
+                while (pollCount < maxPolls) {
+                    pollCount++;
+                    const res = await fetch(`${API_BASE}/jobs/${jobId}`, { headers });
+                    if (!res.ok) {
+                        const errBody = await res.text();
+                        throw new Error(`Job status check failed: ${res.status} ${errBody}`);
+                    }
+                    const data = await res.json();
+
+                    // Update pipeline based on status
+                    const status = data.status; // 'pending' | 'extracting' | 'cleaning' | 'structuring' | 'chunking' | 'completed' | 'failed'
+                    const stepMap = {
+                        pending: 0,
+                        extracting: 1,
+                        cleaning: 2,
+                        structuring: 3,
+                        chunking: 4,
+                        completed: 5,
+                    };
+                    const stepIdx = stepMap[status] ?? 0;
+                    updatePipelineStep(stepIdx);
+                    pipelineStatusText.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+                    pipelineDetail.textContent = STEP_LABELS[Math.min(stepIdx, STEP_LABELS.length - 1)] || '';
+                    progressBarFill.style.width = ((stepIdx + 1) / 6) * 100 + '%';
+
+                    if (status === 'completed') {
+                        pipelineSteps.forEach(s => { s.classList.remove('active');
+                            s.classList.add('done'); });
+                        pipelineConnectors.forEach(c => c.classList.add('done'));
+                        pipelineStatusText.textContent = '✅ Complete';
+                        pipelineDetail.textContent = 'Document processed successfully.';
+                        progressBarFill.style.width = '100%';
+                        processingResults = data.results;
+                        renderResults(processingResults);
+                        resultsCard.style.display = 'block';
+                        resultsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        return;
+                    }
+                    if (status === 'failed') {
+                        throw new Error(data.error || 'Processing failed.');
+                    }
+                    await sleep(POLL_INTERVAL_MS);
+                }
+                throw new Error('Job timed out.');
+            }
+
+            function handleProcessingError(message) {
+                pipelineSteps.forEach(s => {
+                    if (s.classList.contains('active')) {
+                        s.classList.remove('active');
+                        s.classList.add('error-step');
+                    }
+                });
+                pipelineStatusText.textContent = '❌ Error';
+                pipelineDetail.textContent = message;
+                showToast(message, 'error');
+            }
+
+            function sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            // ─────────────────────────────────────
+            // MOCK DATA GENERATION
+            // ─────────────────────────────────────
+            function generateMockResults(file) {
+                const docTitle = file ? file.name.replace(/\.[^.]+$/, '') : 'Document';
+                const now = new Date().toISOString();
+                const markdown = `# ${docTitle}
+            *Extracted on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}*
+
+            ---
+
+            ## 1. Introduction
+
+            This agreement (the "**Agreement**") is entered into as of the Effective Date by and between
+            the parties identified below. The purpose of this document is to establish the terms and
+            conditions governing the relationship between the parties with respect to the services
+            described herein.
+
+            ## 2. Definitions
+
+            **2.1** "**Confidential Information**" means any non-public information disclosed by one party
+            to the other, whether orally or in writing, that is designated as confidential or that
+            reasonably should be understood to be confidential given the nature of the information.
+
+            **2.2** "**Services**" means the document processing and data extraction services described
+            in Exhibit A, attached hereto and incorporated by reference.
+
+            ## 3. Obligations of the Parties
+
+            **3.1** The Service Provider shall perform the Services in a professional and workmanlike
+            manner, consistent with industry standards.
+
+            **3.2** The Client shall provide reasonable access to necessary systems, data, and personnel
+            required for the Service Provider to fulfill its obligations.
+
+            ## 4. Fees and Payment
+
+            | Service Tier | Monthly Volume | Price per Document | Annual Discount |
+            |:------------|:---------------|:-------------------|:----------------|
+            | Starter | Up to 1,000 | $0.50 | 0% |
+            | Professional | Up to 10,000 | $0.35 | 10% |
+            | Enterprise | Unlimited | $0.20 | 20% |
+
+            ## 5. Term and Termination
+
+            **(a)** This Agreement shall commence on the Effective Date and continue for a period of
+            twelve (12) months, unless terminated earlier in accordance with this Section.
+
+            **(b)** Either party may terminate this Agreement upon thirty (30) days' written notice if
+            the other party materially breaches any provision and fails to cure such breach.`;
+
+                const chunks = [
+                    { chunk_id: 'chunk-001', text: `# ${docTitle}\n\nExtracted on ${new Date().toLocaleDateString()}\n\n---\n\n## 1. Introduction\n\nThis agreement (the "Agreement") is entered into as of the Effective Date...`,
+                        metadata: { page: 1, section: 'Introduction', heading_path: [docTitle,
+                                '1. Introduction'
+                            ], token_count: 98 } },
+                    { chunk_id: 'chunk-002', text: '## 2. Definitions\n\n**2.1** "**Confidential Information**" means any non-public information disclosed...\n\n**2.2** "**Services**" means the document processing and data extraction services...',
+                        metadata: { page: 1, section: 'Definitions', heading_path: [docTitle,
+                                '2. Definitions'
+                            ], token_count: 112 } },
+                    { chunk_id: 'chunk-003', text: '## 3. Obligations of the Parties\n\n**3.1** The Service Provider shall perform the Services in a professional and workmanlike manner...\n\n**3.2** The Client shall provide reasonable access...',
+                        metadata: { page: 2, section: 'Obligations', heading_path: [docTitle,
+                                '3. Obligations of the Parties'
+                            ], token_count: 95 } },
+                    { chunk_id: 'chunk-004',
+                        text: '## 4. Fees and Payment\n\n| Service Tier | Monthly Volume | Price per Document | Annual Discount |\n|:------------|:---------------|:-------------------|:----------------|\n| Starter | Up to 1,000 | $0.50 | 0% |\n| Professional | Up to 10,000 | $0.35 | 10% |\n| Enterprise | Unlimited | $0.20 | 20% |',
+                        metadata: { page: 2, section: 'Fees and Payment', heading_path: [docTitle,
+                                '4. Fees and Payment'
+                            ], token_count: 78, has_table: true } },
+                    { chunk_id: 'chunk-005', text: '## 5. Term and Termination\n\n**(a)** This Agreement shall commence on the Effective Date and continue for a period of twelve (12) months...\n\n**(b)** Either party may terminate this Agreement upon thirty (30) days\' written notice...',
+                        metadata: { page: 3, section: 'Term and Termination', heading_path: [docTitle,
+                                '5. Term and Termination'
+                            ], token_count: 105 } },
+                    { chunk_id: 'chunk-006', text: '**(b continued)** ...if the other party materially breaches any provision and fails to cure such breach within the notice period.\n\n---\n\n*End of document.*',
+                        metadata: { page: 3, section: 'Term and Termination', heading_path: [docTitle,
+                                '5. Term and Termination'
+                            ], token_count: 45 } },
+                ];
+
+                return {
+                    job_id: jobId || 'mock-job',
+                    filename: file ? file.name : 'document.pdf',
+                    processed_at: now,
+                    markdown: markdown,
+                    chunks: chunks,
+                    stats: {
+                        total_pages: 3,
+                        total_chunks: chunks.length,
+                        total_tokens: chunks.reduce((s, c) => s + c.metadata.token_count, 0),
+                        headings_detected: 5,
+                        tables_detected: 1,
+                        clauses_detected: 7,
+                    },
+                };
+            }
+
+            // ─────────────────────────────────────
+            // RENDER RESULTS
+            // ─────────────────────────────────────
+            function renderResults(results) {
+                if (!results) return;
+
+                // Badge
+                resultsBadge.textContent = `${results.stats.total_chunks} chunks • ${results.stats.total_tokens} tokens`;
+
+                // Markdown tab
+                markdownContent.textContent = results.markdown;
+
+                // Chunks tab
+                chunksContent.innerHTML = results.chunks.map((chunk, i) => `
+                <div class="chunk-item" data-chunk-index="${i}" onclick="this.classList.toggle('expanded')">
+                <div class="chunk-id">${escapeHtml(chunk.chunk_id)}</div>
+                <div class="chunk-meta">
+                <span>📄 Page ${chunk.metadata.page}</span>
+                <span>📐 ${chunk.metadata.token_count} tokens</span>
+                ${chunk.metadata.has_table ? '<span>📊 Contains table</span>' : ''}
+                ${chunk.metadata.heading || Array.isArray(chunk.metadata.heading_path)
+                    ? `<span>📂 ${escapeHtml(
+                        Array.isArray(chunk.metadata.heading_path)
+                            ? chunk.metadata.heading_path.join(' > ')
+                            : chunk.metadata.heading || 'No heading'
+                    )}</span>`
+                    : ''}
+                </div>
+                <div class="chunk-text">${escapeHtml(chunk.text)}</div>
+                <div style="font-size:0.7rem;color:var(--accent);margin-top:6px;display:none;" class="expand-hint">Click to expand/collapse</div>
+                </div>
+                `).join('');
+
+                // Show expand hints
+                chunksContent.querySelectorAll('.chunk-item').forEach(item => {
+                    const hint = item.querySelector('.expand-hint');
+                    if (hint) hint.style.display = 'block';
+                });
+
+                // JSON tab
+                jsonContent.textContent = JSON.stringify(results, null, 2);
+
+                // Store for downloads
+                processingResults = results;
+            }
+
+            // ─────────────────────────────────────
+            // TAB SWITCHING
+            // ─────────────────────────────────────
+            tabBar.addEventListener('click', (e) => {
+                const btn = e.target.closest('.tab-btn');
+                if (!btn) return;
+                const tabName = btn.dataset.tab;
+                // Deactivate all
+                $$('#tab-bar .tab-btn').forEach(b => b.classList.remove('active'));
+                $$('#results-card .tab-content').forEach(c => c.classList.remove('active'));
+                // Activate selected
+                btn.classList.add('active');
+                const contentEl = document.getElementById('tab-' + tabName);
+                if (contentEl) contentEl.classList.add('active');
+            });
+
+            // ─────────────────────────────────────
+            // DOWNLOADS
+            // ─────────────────────────────────────
+            downloadMdBtn.addEventListener('click', () => {
+                if (!processingResults || !processingResults.markdown) {
+                    showToast('No results to download.', 'error');
+                    return;
+                }
+                downloadTextFile(
+                    processingResults.markdown,
+                    (processingResults.filename || 'document').replace(/\.[^.]+$/, '') + '_parsed.md',
+                    'text/markdown'
+                );
+                showToast('Markdown downloaded.', 'success');
+            });
+
+            downloadJsonBtn.addEventListener('click', () => {
+                if (!processingResults || !processingResults.chunks) {
+                    showToast('No results to download.', 'error');
+                    return;
+                }
+                downloadTextFile(
+                    JSON.stringify(processingResults, null, 2),
+                    (processingResults.filename || 'document').replace(/\.[^.]+$/, '') + '_chunks.json',
+                    'application/json'
+                );
+                showToast('JSON chunks downloaded.', 'success');
+            });
+
+            function downloadTextFile(content, filename, mimeType) {
+                const blob = new Blob([content], { type: mimeType + ';charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            // ─────────────────────────────────────
+            // REPROCESS / NEW
+            // ─────────────────────────────────────
+            reprocessBtn.addEventListener('click', () => {
+                clearFile();
+                uploadZone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                showToast('Ready for a new document.', 'info');
+            });
+
+            // ─────────────────────────────────────
+            // INITIALIZATION
+            // ─────────────────────────────────────
+            function init() {
+                resetPipeline();
+                resetResults();
+                queueCard.style.display = 'none';
+                updateApiKeyStatus();
+                console.log('🚀 DocParse frontend initialized.');
+                console.log('   Mock mode:', USE_MOCK ? 'ON (simulated backend)' : 'OFF (real API)');
+                console.log('   API Base:', API_BASE);
+                console.log('   Drop a file or click the upload zone to begin.');
+            }
+
+            init();
+        })();
+    </script>
+    </body>
+    </html>
