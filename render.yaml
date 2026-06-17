@@ -2,9 +2,11 @@ services:
   - type: web
     name: clauseiq
     env: python
-    pythonVersion: 3.12.1  # <--- Add this line
+    # Remove the pythonVersion field as it's causing an error on Render's side
     buildCommand: cd backend/clauseiq && pip install -r requirements.txt
     startCommand: cd backend/clauseiq && python -m uvicorn clauseiq.api:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: PYTHON_VERSION # Add PYTHON_VERSION as an environment variable
+        value: "3.12.1"
