@@ -2,9 +2,9 @@ services:
   - type: web
     name: clauseiq
     env: python
-    instanceType: free
-    buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend && python -m uvicorn clauseiq.api:app --host 0.0.0.0 --port $PORT
+    pythonVersion: 3.12.1  # <--- Add this line
+    buildCommand: cd backend/clauseiq && pip install -r requirements.txt
+    startCommand: cd backend/clauseiq && python -m uvicorn clauseiq.api:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
